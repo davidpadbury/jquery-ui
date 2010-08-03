@@ -67,6 +67,14 @@ $.widget( "ui.slider", $.ui.mouse, {
 				if ( o.values.length && o.values.length !== 2 ) {
 					o.values = [ o.values[0], o.values[0] ];
 				}
+
+				this.range.hover(function() {
+					if ( !o.disabled ) {
+						$( this ).addClass( "ui-state-hover" );
+					}
+				}, function() {
+					$( this ).removeClass( "ui-state-hover" );
+				});
 			} else {
 				this.range = $( "<div></div>" );
 			}
@@ -253,7 +261,9 @@ $.widget( "ui.slider", $.ui.mouse, {
 			index,
 			allowed,
 			offset,
-			mouseOverHandle;
+			movingRange,
+			mouseOverHandle,
+			i;
 
 		if ( o.disabled ) {
 			return false;
@@ -267,49 +277,61 @@ $.widget( "ui.slider", $.ui.mouse, {
 
 		position = { x: event.pageX, y: event.pageY };
 		normValue = this._normValueFromMouse( position );
-		distance = this._valueMax() - this._valueMin() + 1;
+		movingRange = o.range === true && $( event.target ).is( ".ui-slider-range" );
 		self = this;
-		this.handles.each(function( i ) {
-			var thisDistance = Math.abs( normValue - self.values(i) );
-			if ( distance > thisDistance ) {
-				distance = thisDistance;
-				closestHandle = $( this );
-				index = i;
-			}
-		});
+		
+		if ( !movingRange ) {
+			distance = this._valueMax() - this._valueMin() + 1;
+			this.handles.each(function( i ) {
+				var thisDistance = Math.abs( normValue - self.values(i) );
+				if ( distance > thisDistance ) {
+					distance = thisDistance;
+					closestHandle = $( this );
+					index = i;
+				}
+			});
 
-		// workaround for bug #3736 (if both handles of a range are at 0,
-		// the first is always used as the one with least distance,
-		// and moving it is obviously prevented by preventing negative ranges)
-		if( o.range === true && this.values(1) === o.min ) {
-			index += 1;
-			closestHandle = $( this.handles[index] );
+			// workaround for bug #3736 (if both handles of a range are at 0,
+			// the first is always used as the one with least distance,
+			// and moving it is obviously prevented by preventing negative ranges)
+			if( o.range === true && this.values(1) === o.min ) {
+				index += 1;
+				closestHandle = $( this.handles[index] );
+			}
 		}
 
 		allowed = this._start( event, index );
+
 		if ( allowed === false ) {
 			return false;
 		}
 		this._mouseSliding = true;
 
-		self._handleIndex = index;
+		if (movingRange) {
+			this._rangeOffsets = [];
+			for ( i = 0; i < this.values.length; i++ ) {
+				this._rangeOffsets.push( this.values(i) - normValue );
+			}
+		} else {
+			self._handleIndex = index;
 
-		closestHandle
-			.addClass( "ui-state-active" )
-			.focus();
-		
-		offset = closestHandle.offset();
-		mouseOverHandle = !$( event.target ).parents().andSelf().is( ".ui-slider-handle" );
-		this._clickOffset = mouseOverHandle ? { left: 0, top: 0 } : {
-			left: event.pageX - offset.left - ( closestHandle.width() / 2 ),
-			top: event.pageY - offset.top -
-				( closestHandle.height() / 2 ) -
-				( parseInt( closestHandle.css("borderTopWidth"), 10 ) || 0 ) -
-				( parseInt( closestHandle.css("borderBottomWidth"), 10 ) || 0) +
-				( parseInt( closestHandle.css("marginTop"), 10 ) || 0)
-		};
+			closestHandle
+				.addClass( "ui-state-active" )
+				.focus();
+			
+			offset = closestHandle.offset();
+			mouseOverHandle = !$( event.target ).parents().andSelf().is( ".ui-slider-handle" );
+			this._clickOffset = mouseOverHandle ? { left: 0, top: 0 } : {
+				left: event.pageX - offset.left - ( closestHandle.width() / 2 ),
+				top: event.pageY - offset.top -
+					( closestHandle.height() / 2 ) -
+					( parseInt( closestHandle.css("borderTopWidth"), 10 ) || 0 ) -
+					( parseInt( closestHandle.css("borderBottomWidth"), 10 ) || 0) +
+					( parseInt( closestHandle.css("marginTop"), 10 ) || 0)
+			};
 
-		this._slide( event, index, normValue );
+			this._slide( event, index, normValue );
+		}
 		this._animateOff = true;
 		return true;
 	},
@@ -320,9 +342,16 @@ $.widget( "ui.slider", $.ui.mouse, {
 
 	_mouseDrag: function( event ) {
 		var position = { x: event.pageX, y: event.pageY },
-			normValue = this._normValueFromMouse( position );
+			normValue = this._normValueFromMouse( position ),
+			i;
 		
-		this._slide( event, this._handleIndex, normValue );
+		if (this._rangeOffsets) {
+			for ( i = 0; i < this.values.length; i++ ) {
+				this._slide( event, i, normValue + this._rangeOffsets[i] );
+			}
+		} else {
+			this._slide( event, this._handleIndex, normValue );
+		}
 
 		return false;
 	},
@@ -335,6 +364,7 @@ $.widget( "ui.slider", $.ui.mouse, {
 		this._change( event, this._handleIndex );
 
 		this._handleIndex = null;
+		this._rangeOffsets = null;
 		this._clickOffset = null;
 		this._animateOff = false;
 
