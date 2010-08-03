@@ -12,6 +12,10 @@ function handle() {
 	return el.find(".ui-slider-handle");
 }
 
+function range() {
+	return el.find(".ui-slider-range");
+}
+
 // Slider Tests
 module("slider: core");
 
@@ -287,6 +291,33 @@ test("keydown LEFT on handle decreases value by step, not less than min", functi
 	equals(el.slider("value"), options.min);
 
 	el.slider("destroy");	
+});
+
+test("range drag reduces all values", function() {
+	var initialValues = [40, 60],
+		actualValues,
+		i;
+		
+	el = $( "<div></div>" ).appendTo( "body" );
+	options = {
+		min: 0,
+		max: 100,
+		orientation: 'horizontal',
+		values: initialValues,
+		range: true
+	};
+	el.slider(options);
+
+	// Drag horizontal range to the left to reduce values
+	range().simulate( "drag", { dx: -50, dy: 0 } ); 
+
+	actualValues = el.slider("values");
+
+	el.slider("destroy");
+
+	for ( i = 0; i < initialValues.length; i++ ) {
+		ok( actualValues[i] < initialValues[i] , "value " + i + " has been reduced" );
+	}
 });
 
 })(jQuery);
