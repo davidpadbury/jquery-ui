@@ -348,14 +348,14 @@ $.widget( "ui.slider", $.ui.mouse, {
 		
 		if (this._rangeOffsets) {
 
-            // Reduce normValue to max available in range
-            for ( i = 0; i < this.values.length; i++ ) {
-                normValue = Math.min( this._valueMax(), Math.max( this._valueMin(), this._rangeOffsets[i] + normValue ) ) - this._rangeOffsets[i];
-            }
+			// Reduce normValue to max available in range
+			for ( i = 0; i < this.values.length; i++ ) {
+				normValue = Math.min( this._valueMax(), Math.max( this._valueMin(), this._rangeOffsets[i] + normValue ) ) - this._rangeOffsets[i];
+			}
 
-            for ( i = 0; i < this.values.length; i++ ) {
-                this._slide( event, i, this._rangeOffsets[i] + normValue );
-            }
+			for ( i = 0; i < this.values.length; i++ ) {
+				this._slide( event, i, this._rangeOffsets[i] + normValue );
+			}
 
 		} else {
 			this._slide( event, this._handleIndex, normValue );
